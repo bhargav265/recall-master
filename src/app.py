@@ -1,56 +1,37 @@
 import os
-from datetime import datetime
-from flask import Flask, render_template, make_response
+from flask import Flask, render_template, make_response, request
 from twilio.twiml.messaging_response import Body, Message, Redirect, MessagingResponse
+from chromadb.config import Settings
+import chromadb
+from uuid import uuid4
+import re
 
 app = Flask(__name__)
 
-
-def get_app_debug_info():
-    cfg_items = {k: v for k, v in os.environ.items()}
-    cfg_items['datetime'] = datetime.now().isoformat()
-    return cfg_items
-
-
-@app.route('/')
-def welcome():
-    return {
-        'msg': 'Hello World! This is a simple Python app using Flask! But wait there is more!',
-        'endpoints': ['/', '/ping', '/debug', '/debug/ui']
-    }
-
-
-@app.route('/ping')
-def ping():
-    return {'msg': 'pong!'}
-
-
-@app.route('/debug', methods=['GET'])
-def debug():
-    cfg_items = get_app_debug_info()
-    response = make_response(cfg_items, 200)
-
-    # Enable CORS: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-    response.headers['Access-Control-Allow-Origin'] = '*'  # allow all domains for now
-    response.headers['Access-Control-Allow-Methods'] = "GET"
-
-    return response
-
-
-@app.route('/debug/ui', methods=['GET'])
-def debug_ui():
-    cfg_map = get_app_debug_info()
-    # sort items by key
-    cfg_items = sorted([{'k': k, 'v': v} for k, v in cfg_map.items()], key=lambda x: x['k'].upper())
-    return render_template('debug.html', cfg_items=cfg_items, title='Hello Python Debug!')
+chroma_client = chromadb.HttpClient(host="chroma", port = 8000, settings=Settings(allow_reset=True, anonymized_telemetry=False))
 
 @app.route('/twilio/incoming_message', methods=['POST'])
 def twilio_incoming_message():
+    print(request.form)
+    from_number = request.form.get('From')
+    type_of_comm, number = from_number.split(":")
+    incoming_message = request.form.get('Body')
+    save_to_chroma(incoming_message, number)
     response = MessagingResponse()
     message = Message()
-    message.body('Hello World!')
+    message.body('Noted!')
     response.append(message)
     return str(response)
+
+
+def save_to_chroma(incoming_message, number):
+    collection = chroma_client.get_or_create_collection(re.sub('[^A-Za-z0-9]+', '', number))
+    collection.add(
+    documents=[
+        incoming_message
+    ],
+    ids=[str(uuid4())])
+    
 
 
 @app.errorhandler(404)

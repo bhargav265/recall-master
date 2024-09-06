@@ -2,34 +2,64 @@ version: '3'
 
 services:
   # - - - - - #
-  hello_py:
-    image: local/hello-python:latest
+  recallmaster:
+    depends_on:
+      chroma:
+        condition: service_healthy
+        restart: true
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hello_python
-    restart: "no"
-    ports:
-      - "5001:5001"
-    env_file:
-      - .env.example
-
-  # - - - - - #
-  hello_py_devl:
-    image: local/hello-python:latest-dev
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: hello_python_devl
-    restart: "no"
-    working_dir: "/app_devl/" # set working dir to source code vol mount point
-    entrypoint: ["python3", "src/app.py"]
-    ports:
-      - "5001:5001"
+    container_name: recallmaster
     volumes:
-      - "$PWD:/app_devl/:ro" # mount src code so that we don't have to build container every time during development
-    env_file:
-      - .env.example
+      - ./:/app/
+    restart: "no"
+    ports:
+      - "5001:5001"
+    networks:
+      - net
+
+  chroma:
+    image: ghcr.io/chroma-core/chroma:latest
+    volumes:
+      - index_data:/chroma/.chroma/index
+    ports:
+      - 8000:8000
+    healthcheck:
+      # Adjust below to match your container port
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - net
+
+volumes:
+  index_data:
+    driver: local
+  backups:
+    driver: local
+
+networks:
+  net:
+    driver: bridge
+
+  # # - - - - - #
+  # hello_py_devl:
+  #   image: local/hello-python:latest-dev
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: hello_python_devl
+  #   restart: "no"
+  #   working_dir: "/app_devl/" # set working dir to source code vol mount point
+  #   entrypoint: ["python3", "src/app.py"]
+  #   ports:
+  #     - "5001:5001"
+  #   volumes:
+  #     - "$PWD:/app_devl/:ro" # mount src code so that we don't have to build container every time during development
+  #   env_file:
+  #     - .env.example
 
 # - - - - - - - - - - #
 # Instructions: (for local development and testing)
