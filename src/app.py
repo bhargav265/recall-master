@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from flask import Flask, render_template, make_response
+from twilio.twiml.messaging_response import Body, Message, Redirect, MessagingResponse
 
 app = Flask(__name__)
 
@@ -42,6 +43,14 @@ def debug_ui():
     # sort items by key
     cfg_items = sorted([{'k': k, 'v': v} for k, v in cfg_map.items()], key=lambda x: x['k'].upper())
     return render_template('debug.html', cfg_items=cfg_items, title='Hello Python Debug!')
+
+@app.route('/twilio/incoming_message', methods=['POST'])
+def twilio_incoming_message():
+    response = MessagingResponse()
+    message = Message()
+    message.body('Hello World!')
+    response.append(message)
+    return str(response)
 
 
 @app.errorhandler(404)
