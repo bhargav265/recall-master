@@ -3,10 +3,10 @@ version: '3'
 services:
   # - - - - - #
   recallmaster:
-    depends_on:
-      chroma:
-        condition: service_healthy
-        restart: true
+    # depends_on:
+    #   chroma:
+    #     condition: service_healthy
+    #     restart: true
     build:
       context: .
       dockerfile: Dockerfile
@@ -16,33 +16,40 @@ services:
     restart: "no"
     ports:
       - "5001:5001"
-    networks:
-      - net
+    # networks:
+    #   - net
 
-  chroma:
-    image: ghcr.io/chroma-core/chroma:latest
-    volumes:
-      - index_data:/chroma/.chroma/index
-    ports:
-      - 8000:8000
-    healthcheck:
-      # Adjust below to match your container port
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - net
+  # chroma:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile-chroma
+  #   volumes:
+  #     - index_data:/chroma/.chroma/index
+  #   ports:
+  #     - 8000:8000
+  #   healthcheck:
+  #     # Adjust below to match your container port
+  #     test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat" ]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #   networks:
+  #     - net
+  #   cap_add:
+  #     - SYS_ADMIN
+  #   devices:
+  #     - /dev/fuse
+  #   env_file: "./.env"
 
-volumes:
-  index_data:
-    driver: local
-  backups:
-    driver: local
+# volumes:
+#   index_data:
+#     driver: local
+#   backups:
+#     driver: local
 
-networks:
-  net:
-    driver: bridge
+# networks:
+#   net:
+#     driver: bridge
 
   # # - - - - - #
   # hello_py_devl:

@@ -7,6 +7,7 @@ USER root
 WORKDIR /app
 COPY src/ /app/src/
 COPY ./requirements.txt /app
+COPY ./.env /app
 RUN ls -la /app
 
 RUN mkdir -p /chromadb

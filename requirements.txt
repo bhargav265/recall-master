@@ -6,3 +6,5 @@
 Flask>=2.2.2
 twilio==9.3.0
 langchain-chroma>=0.1.2
+langchain-together
+langchain_huggingface
