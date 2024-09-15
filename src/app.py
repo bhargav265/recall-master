@@ -9,7 +9,6 @@ from uuid import uuid4
 import re
 from langchain_together import ChatTogether
 from chromadb.utils import embedding_functions
-
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
@@ -24,17 +23,25 @@ ef = create_langchain_embedding(langchain_embeddings)
 
 template = """Use the following pieces of context to answer the question at the end.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
+Focus ONLY on answering the specific question asked. Do not provide any additional information or context that is not directly related to the question.
 Use three sentences maximum and keep the answer as concise as possible.
+Be confident in your answers based on the calendar events.
+If you are to provide a time, then provide the time zone as PST as well.
+Do not mention the current date or time unless it's specifically relevant to the question.
 Always say "thanks for asking!" at the end of the answer.
 
 {context}
 
+Calendar Events:
+{calendar_events}
+
 Question: {question}
+
+Current Time: {current_time}
 
 Helpful Answer:"""
 
 load_dotenv()
-
 
 app = Flask(__name__)
 
@@ -72,15 +79,16 @@ def query_pipeline(question, number):
     retriever = Chroma(
         client=chroma_client, collection_name=get_collection_name(number), embedding_function=langchain_embeddings
     ).as_retriever()
-    
-    
+    calendar_events = get_calendar_events()
+    current_time = datetime.now()
     llm = ChatTogether(
         model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
     )
     custom_rag_prompt = PromptTemplate.from_template(template)
 
+
     rag_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
+        {"context": retriever | format_docs, "question": RunnablePassthrough(), "calendar_events": lambda _: calendar_events, "current_time": lambda _: current_time}
         | custom_rag_prompt
         | llm
         | StrOutputParser()
@@ -94,9 +102,21 @@ def get_collection_name(number):
 
 
 def save_or_query(incoming_message, number):
-    if incoming_message.startswith("@recall"):
-        actual_question = incoming_message[7:]
-        return query_pipeline(actual_question, number)
+    llm = ChatTogether(
+        model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+    )
+  
+    classify_prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are a classifier that determines if a message is a question or information. Respond with only 'question' or 'information'."),
+        ("human", "{message}")
+    ])
+  
+    classify_chain = classify_prompt | llm | StrOutputParser()
+  
+    message_type = classify_chain.invoke({"message": incoming_message})
+  
+    if message_type.strip().lower() == 'question':
+        return query_pipeline(incoming_message, number)
     else:
         save_pipeline(incoming_message, number)
         return to_twilio_response("Got that!")
@@ -110,6 +130,40 @@ def to_twilio_response(final_response):
     return str(response)
 
 
+def get_calendar_events():
+      
+    cronofy_client = Client(access_token=os.environ['CRONOFY_TOKEN'])
+  
+    one_months_ago = datetime.now() - timedelta(days=30)
+    seven_days_future = datetime.now() + timedelta(days=7)
+  
+    events = cronofy_client.read_events(
+        from_date=one_months_ago,
+        to_date=seven_days_future,
+        tzid='America/Los_Angeles'
+    )
+
+
+    formatted_events = []
+    for event in events:
+        formatted_event = {
+            'summary': event.get('summary', 'No title'),
+            'start': event.get('start') if event.get('start') else None,
+            'end': event.get('end') if event.get('end') else None,
+            'description': event.get('description', 'No description'),
+            'location': event.get('location', {}).get('description', 'No location'),
+            'attendees': [attendee.get('email') for attendee in event.get('attendees', [])],
+            'organizer': event.get('organizer', {}).get('email', 'No organizer'),
+            'id': event.get('event_uid', 'No ID'),
+            'calendar_id': event.get('calendar_id', 'No calendar ID'),
+            'status': event.get('status', 'No status'),
+            'participation_status': event.get('participation_status', 'No participation status'),
+            'event_status': event.get('event_status', 'No event status'),
+        }
+        formatted_events.append(formatted_event)
+  
+    return json.dumps(formatted_events, indent=2)
+  
 @app.errorhandler(404)
 def not_found(e):
     return {"err": "Not found!"}, 404
