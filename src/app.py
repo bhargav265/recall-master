@@ -23,6 +23,7 @@ from pytz import timezone
 from phoenix.otel import register
 import phoenix as px
 from phoenix.trace.langchain import LangChainInstrumentor
+import pytz
 
 
 ef = create_langchain_embedding(langchain_embeddings)
@@ -179,17 +180,16 @@ def get_calendar_events():
   
    events = cronofy_client.read_events(
        from_date=one_months_ago,
-       to_date=seven_days_future,
-       tzid='America/Los_Angeles'
+       to_date=seven_days_future
    )
-
+   pst_timezone = pytz.timezone('America/Los_Angeles')
 
    formatted_events = []
    for event in events:
        formatted_event = {
            'summary': event.get('summary', 'No title'),
-           'start': event.get('start') if event.get('start') else None,
-           'end': event.get('end') if event.get('end') else None,
+           'start': datetime.strptime(event.get('start'), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc).astimezone(pst_timezone).strftime("%Y-%m-%d %H:%M:%S %Z") if event.get('start') else None,
+           'end': datetime.strptime(event.get('end'), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc).astimezone(pst_timezone).strftime("%Y-%m-%d %H:%M:%S %Z") if event.get('end') else None,
            'description': event.get('description', 'No description'),
            'location': event.get('location', {}).get('description', 'No location'),
            'attendees': [attendee.get('email') for attendee in event.get('attendees', [])],
