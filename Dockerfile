@@ -12,13 +12,14 @@ RUN ls -la /app
 
 RUN mkdir -p /chromadb
 RUN mkdir -p /.cache
+RUN mkdir -p /.phoenix
 # Install python dependencies
 RUN chown 1001 /chromadb
+RUN chown 1001 /.phoenix
 RUN chown 1001 /.cache
 RUN python3 --version
 RUN pip3 install --upgrade pip
-RUN pip3 install --no-cache-dir -r /app/requirements.txt
-RUN pip3 list --format=columns
+RUN pip3 install -r /app/requirements.txt
 
 USER 1001
 

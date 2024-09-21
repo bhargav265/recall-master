@@ -8,3 +8,6 @@ twilio==9.3.0
 langchain-chroma>=0.1.2
 langchain-together
 langchain_huggingface
+arize-phoenix-otel
+arize-phoenix
+pycronofy

@@ -20,10 +20,23 @@ import json
 from langchain_core.prompts import ChatPromptTemplate
 langchain_embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 from pytz import timezone
+from phoenix.otel import register
+import phoenix as px
+from phoenix.trace.langchain import LangChainInstrumentor
 
 
 ef = create_langchain_embedding(langchain_embeddings)
 
+
+os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = "api_key=7d8432aedf54c29f85b:a765f2b"
+os.environ["PHOENIX_CLIENT_HEADERS"] = "api_key=7d8432aedf54c29f85b:a765f2b"
+os.environ["PHOENIX_COLLECTOR_ENDPOINT"] = "https://app.phoenix.arize.com"
+register(
+  project_name="recallmaster", # Default is 'default'
+  endpoint="https://app.phoenix.arize.com/v1/traces",
+) 
+
+LangChainInstrumentor().instrument()
 
 # # meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo
 
@@ -79,9 +92,12 @@ def format_docs(docs):
    return "\n\n".join(doc.page_content for doc in docs)
 
 def query_pipeline(question, number):
-   retriever = Chroma(
+   index = Chroma(
        client=chroma_client, collection_name=get_collection_name(number), embedding_function=langchain_embeddings
-   ).as_retriever()
+   )
+   
+   
+   retriever = index.as_retriever()
   
    calendar_events = get_calendar_events()
   
