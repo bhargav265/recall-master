@@ -10,11 +10,11 @@ COPY ./requirements.txt /app
 COPY ./.env /app
 RUN ls -la /app
 
-RUN mkdir -p /chromadb
-RUN mkdir -p /.cache
-# Install python dependencies
-RUN chown 1001 /chromadb
-RUN chown 1001 /.cache
+# RUN mkdir -p /chromadb
+# RUN mkdir -p /.cache
+# # Install python dependencies
+# RUN chown 1001 /chromadb
+# RUN chown 1001 /.cache
 RUN python3 --version
 RUN pip3 install --upgrade pip
 RUN pip3 install --no-cache-dir -r /app/requirements.txt
