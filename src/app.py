@@ -29,9 +29,6 @@ import pytz
 ef = create_langchain_embedding(langchain_embeddings)
 
 
-os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = "api_key=7d8432aedf54c29f85b:a765f2b"
-os.environ["PHOENIX_CLIENT_HEADERS"] = "api_key=7d8432aedf54c29f85b:a765f2b"
-os.environ["PHOENIX_COLLECTOR_ENDPOINT"] = "https://app.phoenix.arize.com"
 register(
   project_name="recallmaster", # Default is 'default'
   endpoint="https://app.phoenix.arize.com/v1/traces",
